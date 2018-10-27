@@ -16,5 +16,21 @@ namespace WheelResponseViewer
 		{
 			InitializeComponent();
 		}
+
+		private void cmdOpenFile_Click(object sender, EventArgs e)
+		{
+			string fileName;
+
+			dlgOpenFile = new System.Windows.Forms.OpenFileDialog();
+			if (dlgOpenFile.ShowDialog() == DialogResult.OK)
+			{
+				fileName = dlgOpenFile.FileName;
+				WheelDataFile wdf = new WheelDataFile();
+				if (!wdf.OpenFile(fileName))
+				{
+
+				}
+			}
+		}
 	}
 }
