@@ -28,9 +28,21 @@ namespace WheelResponseViewer
 				WheelDataFile wdf = new WheelDataFile();
 				if (!wdf.OpenFile(fileName))
 				{
-
+					lblFileState.Text = "No file open";
+					//Delete the wdf object
 				}
+
+				//Update the file status label
+				lblFileState.Text = wdf.FileName;
+
+				//Populate the graph
+				//graph.Series 
 			}
+		}
+
+		private void graph_Click(object sender, EventArgs e)
+		{
+			graph
 		}
 	}
 }

@@ -19,6 +19,12 @@ namespace WheelResponseViewer
 		public double deltaXDeg;
 	}
 
+	struct NormDataPoint
+	{
+		public double input;
+		public double output;
+	}
+
 	class WheelDataFile
 	{
 
@@ -26,8 +32,9 @@ namespace WheelResponseViewer
 		//Global Class Data
 		private string _FileName;
 		private StreamReader _WDFile;
-		private ArrayList _WheelDataTable = new ArrayList();
-
+		private ArrayList _RawWheelData = new ArrayList();
+		private ArrayList _NormalisedData = new ArrayList();
+		private bool _FileLoaded = false;
 
 		//Properties
 		public string FileName                 //Read-Only File Name Property for the object
@@ -35,6 +42,22 @@ namespace WheelResponseViewer
 			get
 			{
 				return _FileName;
+			}
+		}
+
+		public string FileLoaded                 //Read-Only File Name Property for the object
+		{
+			get
+			{
+				return _FileLoaded;
+			}
+		}
+
+		public ArrayList DataPoints                 //Read-Only Property for the object
+		{
+			get
+			{
+				return _NormalisedData;
 			}
 		}
 
@@ -144,11 +167,58 @@ namespace WheelResponseViewer
 					fieldNumber++;
 				}
 
-				_WheelDataTable.Add(convertedData);
+				_RawWheelData.Add(convertedData);
 			}
+
+			//Close the file
+			_WDFile.Close();
+
+			this.processData();
+
+			_FileLoaded = true;
+
+			return true;
+		}
+
+		private bool processData()
+		{
+			int maxForce = 0;
+			int minForce = 0;
+			int numOfPoints = 0;
+			int maxDelta = 0;
+			bool minValueFound = false;
+
+			//Normalise the data and determine the deadzone
+			foreach(WheelDataPoint point in _RawWheelData)
+			{
+				numOfPoints++;
+				if (point.force > maxForce) maxForce = point.force;
+				if (point.force > maxDelta) maxForce = point.deltaX;
+				if (point.deltaX != 0) minValueFound = true;
+				if (!minValueFound) minForce = point.force;
+			}
+
+			NormDataPoint normPoint;
+			normPoint.input = 0.0;
+			normPoint.output = 0.0;
+
+			foreach(WheelDataPoint point in _RawWheelData)
+			{
+				normPoint.input = (double)point.force / (double)maxForce;
+				normPoint.output = (double)point.deltaX / (double)maxDelta;
+				_NormalisedData.Add(normPoint);
+			}
+
+			return true;
+		}
+
+		public bool graphData(System.Windows.Forms.DataVisualization.Charting.Chart chart, string series, string chartArea)
+		{
+
 
 
 			return true;
 		}
+
 	}
 }
