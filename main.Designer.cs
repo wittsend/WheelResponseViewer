@@ -54,6 +54,7 @@
 			series1.Name = "response";
 			this.graph.Series.Add(series1);
 			this.graph.Size = new System.Drawing.Size(556, 316);
+			this.graph.SuppressExceptions = true;
 			this.graph.TabIndex = 0;
 			this.graph.Text = "Response Plot";
 			title1.Name = "title";

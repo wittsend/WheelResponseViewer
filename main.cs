@@ -36,13 +36,13 @@ namespace WheelResponseViewer
 				lblFileState.Text = wdf.FileName;
 
 				//Populate the graph
-				//graph.Series 
+				wdf.graphData(ref graph, "response", "area"); 
 			}
 		}
 
 		private void graph_Click(object sender, EventArgs e)
 		{
-			graph
+			
 		}
 	}
 }

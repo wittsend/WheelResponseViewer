@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 using System.IO;
 
 
@@ -27,14 +28,16 @@ namespace WheelResponseViewer
 
 	class WheelDataFile
 	{
-
-
 		//Global Class Data
 		private string _FileName;
 		private StreamReader _WDFile;
 		private ArrayList _RawWheelData = new ArrayList();
 		private ArrayList _NormalisedData = new ArrayList();
 		private bool _FileLoaded = false;
+
+		private int _maxForce = 0;
+		private int _minForce = 0;
+		private int _maxDelta = 0;
 
 		//Properties
 		public string FileName                 //Read-Only File Name Property for the object
@@ -45,7 +48,7 @@ namespace WheelResponseViewer
 			}
 		}
 
-		public string FileLoaded                 //Read-Only File Name Property for the object
+		public bool FileLoaded                 //Read-Only File Name Property for the object
 		{
 			get
 			{
@@ -58,6 +61,14 @@ namespace WheelResponseViewer
 			get
 			{
 				return _NormalisedData;
+			}
+		}
+
+		public int NumberOfPoints                 //Read-Only Property for the object
+		{
+			get
+			{
+				return _RawWheelData.Count;
 			}
 		}
 
@@ -182,42 +193,67 @@ namespace WheelResponseViewer
 
 		private bool processData()
 		{
-			int maxForce = 0;
-			int minForce = 0;
-			int numOfPoints = 0;
-			int maxDelta = 0;
-			bool minValueFound = false;
-
-			//Normalise the data and determine the deadzone
+			//Find max values of force and deltaX for normalisation
 			foreach(WheelDataPoint point in _RawWheelData)
 			{
-				numOfPoints++;
-				if (point.force > maxForce) maxForce = point.force;
-				if (point.force > maxDelta) maxForce = point.deltaX;
-				if (point.deltaX != 0) minValueFound = true;
-				if (!minValueFound) minForce = point.force;
+				if (point.force > _maxForce) _maxForce = point.force;
+				if (point.force > _maxDelta) _maxDelta = point.deltaX;
 			}
 
+			//Scan from right to left until the first 0 value is seen. This marks the start of
+			//the deadzone.
+			for(int i = _RawWheelData.Count - 1; i >= 0; i--)
+			{
+				if(((WheelDataPoint)_RawWheelData[i]).deltaX <= 0)
+				{
+					_minForce = ((WheelDataPoint)_RawWheelData[i]).force;
+					break;
+				}
+			}
+
+			//Initialise data structure for single data point
 			NormDataPoint normPoint;
 			normPoint.input = 0.0;
 			normPoint.output = 0.0;
 
 			foreach(WheelDataPoint point in _RawWheelData)
 			{
-				normPoint.input = (double)point.force / (double)maxForce;
-				normPoint.output = (double)point.deltaX / (double)maxDelta;
+				normPoint.input = (double)point.force / (double)_maxForce;
+				normPoint.output = (double)point.deltaX / (double)_maxDelta;
 				_NormalisedData.Add(normPoint);
 			}
 
 			return true;
 		}
 
-		public bool graphData(System.Windows.Forms.DataVisualization.Charting.Chart chart, string series, string chartArea)
+		public bool graphData(ref Chart chart, string series, string chartArea)
 		{
+			
+			if (_FileLoaded)
+			{
+				//Alter the chart area so that the axis ranges are 0-100%
+				//chart.ChartAreas[chartArea].AxisX.Maximum = 100;
+				//chart.ChartAreas[chartArea].AxisX.Minimum = 0;
+				//chart.ChartAreas[chartArea].AxisY.Maximum = 100;
+				//chart.ChartAreas[chartArea].AxisY.Minimum = 0;
+				
+				//Set the chart area axis titles
+				chart.ChartAreas[chartArea].AxisX.Title = "Input force %";
+				chart.ChartAreas[chartArea].AxisY.Title = "Output force %";
+				
+				//Load the data into the chart
+				chart.Series[series].ChartArea = chartArea;
+				chart.Series[series].ChartType = SeriesChartType.Line;
+				
+				foreach(NormDataPoint normPoint in _NormalisedData)
+				{
+					chart.Series[series].Points.AddXY(normPoint.input * 100, normPoint.output * 100);
+				}
 
+				return true;
+			}
 
-
-			return true;
+			return false;
 		}
 
 	}
