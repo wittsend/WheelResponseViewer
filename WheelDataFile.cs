@@ -33,11 +33,13 @@ namespace WheelResponseViewer
 		private StreamReader _WDFile;
 		private ArrayList _RawWheelData = new ArrayList();
 		private ArrayList _NormalisedData = new ArrayList();
+		private ArrayList _CorrectedData = new ArrayList();
 		private bool _FileLoaded = false;
 
 		private int _maxForce = 0;
 		private int _minForce = 0;
 		private int _maxDelta = 0;
+		private const int _rFactorFFBRange = 11500;
 
 		//Properties
 		public string FileName                 //Read-Only File Name Property for the object
@@ -193,6 +195,11 @@ namespace WheelResponseViewer
 
 		private bool processData()
 		{
+			//The maximum output value for the game we are creating a correction profile for
+			int maxOutputValue = 1000;
+			//The sample in the normalised data where the deadzone ends.
+			int startSample = 0;
+
 			//Find max values of force and deltaX for normalisation
 			foreach(WheelDataPoint point in _RawWheelData)
 			{
@@ -207,11 +214,12 @@ namespace WheelResponseViewer
 				if(((WheelDataPoint)_RawWheelData[i]).deltaX <= 0)
 				{
 					_minForce = ((WheelDataPoint)_RawWheelData[i]).force;
+					startSample = i;
 					break;
 				}
 			}
 
-			//Initialise data structure for single data point
+			//Normalise the raw data ready for creating the correction data
 			NormDataPoint normPoint;
 			normPoint.input = 0.0;
 			normPoint.output = 0.0;
@@ -222,6 +230,36 @@ namespace WheelResponseViewer
 				normPoint.output = (double)point.deltaX / (double)_maxDelta;
 				_NormalisedData.Add(normPoint);
 			}
+
+			double outStart, outEnd, inStart, inEnd;
+			int steps;
+
+
+			//Now lets create a new set with the correction data
+			//Interpolate the normalised data to the max value used by the software
+			for (int i = startSample; i < _NormalisedData.Count - 1; i++)
+			{
+				
+				outStart = ((NormDataPoint)_NormalisedData[i]).input * maxOutputValue;
+				outEnd = ((NormDataPoint)_NormalisedData[i + 1]).input * maxOutputValue;
+				inStart = ((NormDataPoint)_NormalisedData[i]).output * maxOutputValue;
+				inEnd = ((NormDataPoint)_NormalisedData[i + 1]).output * maxOutputValue;
+
+				//Work out the number of steps in the current interval:
+				steps = (int)(inEnd - inStart);
+
+				//Interpolate the values for the current interval and store them
+				for(int j = 0; j < steps; j++)
+				{
+					//Recycling normPoint
+					normPoint.input = j + (int)inStart;
+					normPoint.output = (int)(((outEnd - outStart) / steps) * j + outStart);
+					_CorrectedData.Add(normPoint);
+				}
+
+
+			}
+
 
 			return true;
 		}
